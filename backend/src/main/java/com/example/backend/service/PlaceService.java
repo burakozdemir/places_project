@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
+
 @Service
 public class PlaceService {
 
@@ -31,12 +33,22 @@ public class PlaceService {
 
         GoogleApiResponseDto apiResponse = googlePlacesService.searchNearbyPlaces(latitude, longitude, radius);
 
-        searchRecord = googleApiResponseToSearchRecordConvertor.convert(apiResponse);
-        searchRecord.setLatitude(latitude);
-        searchRecord.setLongitude(longitude);
-        searchRecord.setRadius(radius);
+        if(apiResponse.getPlaces() != null && apiResponse.getPlaces().size() > 0){
+            searchRecord = googleApiResponseToSearchRecordConvertor.convert(apiResponse);
+            searchRecord.setLatitude(latitude);
+            searchRecord.setLongitude(longitude);
+            searchRecord.setRadius(radius);
 
-        searchRecord = searchRecordRepository.save(searchRecord);
+            searchRecord = searchRecordRepository.save(searchRecord);
+
+        }else{
+            searchRecord = new SearchRecord();
+            searchRecord.setLatitude(latitude);
+            searchRecord.setLongitude(longitude);
+            searchRecord.setRadius(radius);
+            searchRecord.setTimestamp(new Date());
+        }
+
         return searchRecord;
     }
 }
