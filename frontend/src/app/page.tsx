@@ -46,6 +46,8 @@ export default function Home() {
   const [infoWindowData, setInfoWindowData] = useState<MarkerType>();
   const [center,setCenter] = useState<CenterType>();
 
+  const [error, setError] = useState<string>('');
+
   useEffect(() => {
     if(latitude && longitude){
       setCenter({ lat: Number(latitude), lng: Number(longitude) })
@@ -58,12 +60,36 @@ export default function Home() {
 
   },[places])
 
+  const validateInputs = (): boolean => {
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    const rad = parseFloat(radius);
+
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      setError('Invalid latitude. Please type value that between -90 and 90');
+      return false;
+    }
+
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      setError('Invalid longitude. Please type value that between -180 and 180');
+      return false;
+    }
+
+    if (isNaN(rad) || rad <= 0) {
+      setError('Invalid radius. Please type positive input');
+      return false;
+    }
+
+    setError('');
+    return true;
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    //if(!validateInputs()){
-    //  return;
-    //}
+    if(!validateInputs()){
+      return;
+    }
 
     const url = new URL('http://localhost:8070/place/v1');
 
