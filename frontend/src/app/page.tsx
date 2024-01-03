@@ -91,7 +91,7 @@ export default function Home() {
       return;
     }
 
-    const url = new URL('http://localhost:8070/place/v1');
+    const url = new URL('https://notificationexample16.oa.r.appspot.com/place/v1');
 
     const params = { lat: latitude, lon: longitude, radius: radius };
     url.search = new URLSearchParams(params).toString();
