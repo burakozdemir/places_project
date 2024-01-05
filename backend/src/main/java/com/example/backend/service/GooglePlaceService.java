@@ -5,6 +5,7 @@ import com.example.backend.dto.request.google.GoogleApiRequestCircleDto;
 import com.example.backend.dto.request.google.GoogleApiRequestLocationRestriction;
 import com.example.backend.dto.request.google.GoogleApiRequestSearchNearbyDto;
 import com.example.backend.dto.response.google.GoogleApiResponseDto;
+import org.hibernate.service.spi.ServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -42,9 +43,13 @@ public class GooglePlaceService {
 
         HttpEntity<GoogleApiRequestSearchNearbyDto> entity = new HttpEntity<>(request, headers);
 
-        ResponseEntity<GoogleApiResponseDto> response = restTemplate.postForEntity(url, entity, GoogleApiResponseDto.class);
-
-        return response.getBody();
+        try {
+            ResponseEntity<GoogleApiResponseDto> response = restTemplate.postForEntity(url, entity, GoogleApiResponseDto.class);
+            return response.getBody();
+        } catch (Exception e) {
+            // Log error and handle it appropriately
+            throw new ServiceException("Error calling Google Places API", e);
+        }
     }
 }
 
