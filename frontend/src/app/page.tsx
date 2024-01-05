@@ -4,7 +4,8 @@ import {FormEvent, useEffect, useState} from "react";
 import {GoogleMap, InfoWindow, Marker, useLoadScript} from "@react-google-maps/api";
 
 
-type ApiResponse = {
+// Types
+interface ApiResponse {
   id: number;
   latitude: number;
   longitude: number;
@@ -13,23 +14,35 @@ type ApiResponse = {
   timestamps: string;
 }
 
-type ApiResponsePlace = {
+interface ApiResponsePlace {
   id: number;
   latitude: number;
   longitude: number;
   placeId: string;
   placeName: string;
-};
+}
 
-type CenterType = {
+interface CenterType {
   lat: number;
   lng: number;
 }
 
-type MarkerType = {
+interface MarkerType {
   id: number;
   name: string;
 }
+
+// Constants
+const DEFAULT_CENTER: CenterType = { lat: 41.057555, lng: 28.993958 };
+const MAP_API_KEY = 'AIzaSyDDhl-OSSGdhY7dgCALcR2ZkgYNbhyd5T8';
+const API_URL = 'https://notificationexample16.oa.r.appspot.com/place/v1';
+const DEFAULT_ZOOM = 12;
+
+// Helper Functions
+const isLatitudeValid = (latitude: number): boolean => !isNaN(latitude) && latitude >= -90 && latitude <= 90;
+const isLongitudeValid = (longitude: number): boolean => !isNaN(longitude) && longitude >= -180 && longitude <= 180;
+const isRadiusValid = (radius: number): boolean => !isNaN(radius) && radius > 0;
+
 
 export default function Home() {
   const [latitude, setLatitude] = useState<string>('');
@@ -37,9 +50,6 @@ export default function Home() {
   const [radius, setRadius] = useState<string>('');
   const [places, setPlaces] = useState<ApiResponsePlace[]>([]);
 
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: 'AIzaSyDDhl-OSSGdhY7dgCALcR2ZkgYNbhyd5T8',
-  });
   const [mapRef, setMapRef] = useState<google.maps.Map | null>();
   const [circleRef, setCircleRef] = useState<google.maps.Circle | null>();
   const [isOpen, setIsOpen] = useState(false);
@@ -48,75 +58,64 @@ export default function Home() {
 
   const [error, setError] = useState<string>('');
 
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: MAP_API_KEY,
+  });
+
   useEffect(() => {
     if(latitude && longitude){
       setCenter({ lat: Number(latitude), lng: Number(longitude) })
       drawCircleAroundMarkers();
       updateMapBounds();
     }
-    else {
-      setCenter({ lat: Number(41.057555), lng: Number(28.993958) })
-    }
-
   },[places])
 
-  const validateInputs = (): boolean => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
     const rad = parseFloat(radius);
 
-    if (isNaN(lat) || lat < -90 || lat > 90) {
-      setError('Invalid latitude. Please type value that between -90 and 90');
-      return false;
-    }
-
-    if (isNaN(lng) || lng < -180 || lng > 180) {
-      setError('Invalid longitude. Please type value that between -180 and 180');
-      return false;
-    }
-
-    if (isNaN(rad) || rad <= 0) {
-      setError('Invalid radius. Please type positive input');
-      return false;
-    }
-
-    setError('');
-    return true;
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if(!validateInputs()){
+    if (!isLatitudeValid(lat)) {
+      setError('Invalid latitude. Please type a value between -90 and 90');
       return;
     }
 
-    const url = new URL('https://notificationexample16.oa.r.appspot.com/place/v1');
+    if (!isLongitudeValid(lng)) {
+      setError('Invalid longitude. Please type a value between -180 and 180');
+      return;
+    }
 
-    const params = { lat: latitude, lon: longitude, radius: radius };
-    url.search = new URLSearchParams(params).toString();
+    if (!isRadiusValid(rad)) {
+      setError('Invalid radius. Please type a positive input');
+      return;
+    }
 
-    fetch(url, {
+    setError('');
+    fetchPlaces(lat, lng, rad);
+  };
+
+  const fetchPlaces = (lat: number, lng: number, rad: number) => {
+    const params = new URLSearchParams({ lat: lat.toString(), lon: lng.toString(), radius: rad.toString() });
+    fetch(`${API_URL}?${params}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }).then(async (response)  => {
-      const result = await response.json() as ApiResponse;
-      console.log('RESPONSE : ', result);
-      result.places.length > 0 && setPlaces(result.places);
-
-    }).catch(err => {
-      console.log('Error : ', err);
-    });
-
+      headers: { 'Content-Type': 'application/json' },
+    })
+        .then(response => response.json())
+        .then((result: ApiResponse) => {
+          if (result.places.length > 0) {
+            setPlaces(result.places);
+          }
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          setError('Failed to fetch places.');
+        });
   };
 
   const onMapLoad = (map: google.maps.Map) => {
     setMapRef(map);
-    const bounds = new google.maps.LatLngBounds();
-    places?.forEach(({ latitude, longitude }) => bounds.extend({ lat: latitude, lng: longitude }));
-    map.fitBounds(bounds);
+    setCenter(DEFAULT_CENTER)
   };
 
   const handleMarkerClick = (id: number, lat: number, lng:number, name: string) => {
@@ -234,13 +233,15 @@ export default function Home() {
             Restaurants
           </button>
         </form>
+        {error && <div className="mt-3 text-red-500">{error}</div>}
+        <div className="mt-3" />
         {!isLoaded ? (
             <h1>Loading...</h1>
         ) : (
             <GoogleMap
                 mapContainerStyle={{height:'70%', width:'70%'}}
                 center={center}
-                zoom={12}
+                zoom={DEFAULT_ZOOM}
                 onLoad={onMapLoad}
                 onClick={() => setIsOpen(false)}
             >
